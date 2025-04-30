@@ -9,6 +9,11 @@ requirements = []
 path = 'contracts/bet-placement.clar'
 clarity_version = 3
 epoch = 3.0
+
+[contracts.p2p-betting]
+path = 'contracts/p2p-betting.clar'
+clarity_version = 3
+epoch = 3.0
 [repl.analysis]
 passes = ['check_checker']
 
