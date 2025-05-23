@@ -5,8 +5,11 @@ authors = []
 telemetry = true
 cache_dir = '.\.cache'
 requirements = []
+[contracts.bet-settlement]
+path = 'contracts/bet-settlement.clar'
 [contracts.bet-placement]
 path = 'contracts/bet-placement.clar'
+
 clarity_version = 3
 epoch = 3.0
 [repl.analysis]
