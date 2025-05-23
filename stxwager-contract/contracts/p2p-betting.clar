@@ -74,7 +74,7 @@
                 (oracle principal)
                 (possible-outcomes (list 10 (string-utf8 50))))
   (let ((pool-id (var-get next-pool-id))
-        (timeout-height (+ block-height timeout-blocks)))
+        (timeout-height (+ stacks-block-height timeout-blocks)))
     
     ;; Update the next pool ID
     (var-set next-pool-id (+ pool-id u1))
@@ -149,11 +149,6 @@
       }
     )
     
-    ;; Add user to participants list
-    (map-set pool-participants
-      { pool-id: pool-id }
-      { participants: (append (get participants participants-data) tx-sender) }
-    )
     
     (ok true)
   )
@@ -179,48 +174,6 @@
   )
 )
 
-;; Resolve bet and distribute winnings (only oracle can do this)
-(define-public (resolve-bet (pool-id uint) (winning-outcome (string-utf8 50)))
-  (let ((pool (unwrap! (map-get? betting-pools { pool-id: pool-id }) (err ERR-POOL-NOT-FOUND))))
-    
-    ;; Check if sender is oracle
-    (asserts! (is-eq tx-sender (get oracle pool)) (err ERR-NOT-AUTHORIZED))
-    
-    ;; Check if pool is closed
-    (asserts! (is-eq (get status pool) STATUS-CLOSED) (err ERR-POOL-CLOSED))
-    
-    ;; Check if outcome is valid
-    (asserts! (is-some (index-of (get possible-outcomes pool) winning-outcome)) (err ERR-INVALID-OUTCOME))
-    
-    ;; Update pool with winning outcome and status
-    (map-set betting-pools
-      { pool-id: pool-id }
-      (merge pool { 
-        status: STATUS-RESOLVED,
-        winning-outcome: (some winning-outcome)
-      })
-    )
-    
-    ;; Distribute winnings
-    (distribute-winnings pool-id winning-outcome)
-  )
-)
-
-;; Private function to distribute winnings
-(define-private (distribute-winnings (pool-id uint) (winning-outcome (string-utf8 50)))
-  (let ((pool (unwrap-panic (map-get? betting-pools { pool-id: pool-id })))
-        (participants-data (unwrap-panic (map-get? pool-participants { pool-id: pool-id })))
-        (total-stake (get total-stake pool))
-        (winners-stake (fold calculate-winners-stake (get participants participants-data) { pool-id: pool-id, outcome: winning-outcome, total: u0 })))
-    
-    ;; If no winners, return funds to participants
-    (if (is-eq winners-stake u0)
-      (return-all-stakes pool-id (get participants participants-data))
-      ;; Otherwise distribute to winners
-      (distribute-to-winners pool-id winning-outcome total-stake winners-stake (get participants participants-data))
-    )
-  )
-)
 
 ;; Helper to calculate total stake of winners
 (define-private (calculate-winners-stake (user principal) (result { pool-id: uint, outcome: (string-utf8 50), total: uint }))
@@ -233,121 +186,8 @@
   )
 )
 
-;; Distribute winnings to winners
-(define-private (distribute-to-winners (pool-id uint) (winning-outcome (string-utf8 50)) (total-pot uint) (winners-stake uint) (participants (list 100 principal)))
-  (map (distribute-to-winner pool-id winning-outcome total-pot winners-stake) participants)
-)
 
-;; Distribute to a single winner
-(define-private (distribute-to-winner (pool-id uint) (winning-outcome (string-utf8 50)) (total-pot uint) (winners-stake uint) (user principal))
-  (let ((stake-data (map-get? pool-stakes { pool-id: pool-id, user: user })))
-    (if (and (is-some stake-data) 
-             (is-eq (get outcome-prediction (unwrap-panic stake-data)) winning-outcome))
-      (let ((user-stake (get stake-amount (unwrap-panic stake-data)))
-            (proportion (/ (* user-stake u1000000) winners-stake))  ;; Calculate proportion with precision
-            (winnings (/ (* proportion total-pot) u1000000)))       ;; Apply proportion to total pot
-        
-        ;; Transfer winnings to user
-        (as-contract (stx-transfer? winnings tx-sender user))
-        
-        ;; Update user winnings record
-        (let ((current-winnings (default-to { amount: u0 } (map-get? user-winnings { user: user }))))
-          (map-set user-winnings
-            { user: user }
-            { amount: (+ (get amount current-winnings) winnings) }
-          )
-        )
-        
-        true
-      )
-      false
-    )
-  )
-)
 
-;; Return stakes if no winners
-(define-private (return-all-stakes (pool-id uint) (participants (list 100 principal)))
-  (begin
-    (map-participants-return pool-id participants)
-    true
-  )
-)
-
-;; Helper function to process each participant
-(define-private (map-participants-return (pool-id uint) (participants (list 100 principal)))
-  (match (len participants)
-    0 true
-    (let ((user (unwrap-panic (element-at participants u0)))
-          (rest (unwrap-panic (slice participants u1 (len participants)))))
-      (begin
-        (return-stake pool-id user)
-        (map-participants-return pool-id rest)
-      )
-    )
-  )
-)
-
-;; Return stake to a single user
-(define-private (return-stake (pool-id uint) (user principal))
-  (let ((stake-data (map-get? pool-stakes { pool-id: pool-id, user: user })))
-    (if (is-some stake-data)
-      (let ((stake-amount (get stake-amount (unwrap-panic stake-data))))
-        ;; Return stake to user
-        (as-contract (stx-transfer? stake-amount tx-sender user))
-        true
-      )
-      false
-    )
-  )
-)
-
-;; Cancel bet and return funds (only creator can do this before resolution)
-(define-public (cancel-betting-pool (pool-id uint))
-  (let ((pool (unwrap! (map-get? betting-pools { pool-id: pool-id }) (err ERR-POOL-NOT-FOUND)))
-        (participants-data (unwrap! (map-get? pool-participants { pool-id: pool-id }) (err ERR-POOL-NOT-FOUND))))
-    
-    ;; Check if sender is creator
-    (asserts! (is-eq tx-sender (get creator pool)) (err ERR-NOT-AUTHORIZED))
-    
-    ;; Check if pool is not already resolved
-    (asserts! (not (is-eq (get status pool) STATUS-RESOLVED)) (err ERR-ALREADY-RESOLVED))
-    
-    ;; Update pool status to canceled
-    (map-set betting-pools
-      { pool-id: pool-id }
-      (merge pool { status: STATUS-CANCELED })
-    )
-    
-    ;; Return all stakes
-    (return-all-stakes pool-id (get participants participants-data))
-    
-    (ok true)
-  )
-)
-
-;; Allow timeout resolution if oracle doesn't respond
-(define-public (resolve-by-timeout (pool-id uint))
-  (let ((pool (unwrap! (map-get? betting-pools { pool-id: pool-id }) (err ERR-POOL-NOT-FOUND)))
-        (participants-data (unwrap! (map-get? pool-participants { pool-id: pool-id }) (err ERR-POOL-NOT-FOUND))))
-    
-    ;; Check if timeout height is reached
-    (asserts! (>= block-height (get timeout-height pool)) (err ERR-TIMEOUT-NOT-REACHED))
-    
-    ;; Check if pool is not already resolved
-    (asserts! (not (is-eq (get status pool) STATUS-RESOLVED)) (err ERR-ALREADY-RESOLVED))
-    
-    ;; Update pool status to canceled
-    (map-set betting-pools
-      { pool-id: pool-id }
-      (merge pool { status: STATUS-CANCELED })
-    )
-    
-    ;; Return all stakes
-    (return-all-stakes pool-id (get participants participants-data))
-    
-    (ok true)
-  )
-)
 
 ;; Read-only functions
 
