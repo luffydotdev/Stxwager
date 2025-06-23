@@ -24,6 +24,11 @@ epoch = 3.0
 path = 'contracts/staking.clar'
 clarity_version = 3
 epoch = 3.0
+
+[contracts.staking-interface]
+path = 'contracts/staking-interface.clar'
+clarity_version = 3
+epoch = 3.0
 [repl.analysis]
 passes = ['check_checker']
 
