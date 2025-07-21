@@ -5,16 +5,28 @@ authors = []
 telemetry = true
 cache_dir = '.\.cache'
 requirements = []
-[contracts.bet-settlement]
-path = 'contracts/bet-settlement.clar'
 [contracts.bet-placement]
 path = 'contracts/bet-placement.clar'
-
 clarity_version = 3
 epoch = 3.0
 
+[contracts.bet-settlement]
+path = 'contracts/bet-settlement.clar'
+clarity_version = 1
+epoch = 2.05
+
 [contracts.p2p-betting]
 path = 'contracts/p2p-betting.clar'
+clarity_version = 3
+epoch = 3.0
+
+[contracts.staking]
+path = 'contracts/staking.clar'
+clarity_version = 3
+epoch = 3.0
+
+[contracts.staking-interface]
+path = 'contracts/staking-interface.clar'
 clarity_version = 3
 epoch = 3.0
 [repl.analysis]
