@@ -5,6 +5,11 @@ authors = []
 telemetry = true
 cache_dir = '.\.cache'
 requirements = []
+[contracts.Dynamic-staking]
+path = 'contracts/Dynamic-staking.clar'
+clarity_version = 3
+epoch = 3.0
+
 [contracts.bet-placement]
 path = 'contracts/bet-placement.clar'
 clarity_version = 3
