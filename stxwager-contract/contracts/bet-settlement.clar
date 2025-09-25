@@ -89,7 +89,7 @@
       (let ((settlement-block (get settlement-block (unwrap-panic event))))
         (if (is-none settlement-block)
           false
-          (< stacks-block-height (+ (unwrap-panic settlement-block) dispute-period))
+          (< block-height (+ (unwrap-panic settlement-block) dispute-period))
         )
       )
     )
