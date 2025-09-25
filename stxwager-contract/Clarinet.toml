@@ -1,46 +1,19 @@
 [project]
-name = 'stxwager-contract'
-description = ''
+name = "stxwager-contract"
 authors = []
+description = ""
 telemetry = true
-cache_dir = '.\.cache'
 requirements = []
-[contracts.Dynamic-staking]
-path = 'contracts/Dynamic-staking.clar'
-clarity_version = 3
-epoch = 3.0
+[contracts.event-management]
+path = "contracts/event-management.clar"
+depends_on = []
 
-[contracts.bet-placement]
-path = 'contracts/bet-placement.clar'
-clarity_version = 3
-epoch = 3.0
+[repl]
+costs_version = 2
+parser_version = 2
 
-[contracts.bet-settlement]
-path = 'contracts/bet-settlement.clar'
-clarity_version = 1
-epoch = 2.05
-
-[contracts.liquidity-pool]
-path = 'contracts/liquidity-pool.clar'
-clarity_version = 3
-epoch = 3.0
-
-[contracts.p2p-betting]
-path = 'contracts/p2p-betting.clar'
-clarity_version = 3
-epoch = 3.0
-
-[contracts.staking]
-path = 'contracts/staking.clar'
-clarity_version = 3
-epoch = 3.0
-
-[contracts.staking-interface]
-path = 'contracts/staking-interface.clar'
-clarity_version = 3
-epoch = 3.0
 [repl.analysis]
-passes = ['check_checker']
+passes = ["check_checker"]
 
 [repl.analysis.check_checker]
 strict = false
